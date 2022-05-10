@@ -8,6 +8,7 @@ import android.os.Environment;
 import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -36,24 +37,10 @@ public class MainActivity extends AppCompatActivity {
         URL=editText.getText().toString();
         if (URL!=""||URL!=null){
             new DownloadFileFromURL().execute(URL);
-            Toast.makeText(getApplicationContext(),"Download gestartet",Toast.LENGTH_LONG).show();
+            Toast.makeText(getApplicationContext(),"Download gestartet",Toast.LENGTH_SHORT).show();
         }
         else{
-            Toast.makeText(getApplicationContext(),"Bitte gib eine URL an",Toast.LENGTH_LONG).show();
-        }
-    }
-
-    @Override
-    protected Dialog onCreateDialog(int id) {
-        switch (id) {
-            case progress_bar_type:
-                pDialog = new ProgressDialog(this);
-                pDialog.setMessage("Downloading");
-                pDialog.setCancelable(true);
-                pDialog.show();
-                return pDialog;
-            default:
-                return null;
+            Toast.makeText(getApplicationContext(),"Bitte gib eine URL an",Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -65,15 +52,18 @@ public class MainActivity extends AppCompatActivity {
             showDialog(progress_bar_type);
         }
 
-        //Update Progressbar
         protected void onProgressUpdate(String... progress) {
-            // setting progress percentage
-            pDialog.setProgress(Integer.parseInt(progress[0]));
+            ProgressBar simpleProgressBar=(ProgressBar) findViewById(R.id.progressBar);
+            simpleProgressBar.setMax(100);
+            simpleProgressBar.setProgress(Integer.parseInt(progress[0]));
+            if (Integer.parseInt(progress[0])==100){
+                Toast.makeText(getApplicationContext(),"Download Abgeschlossen",Toast.LENGTH_SHORT).show();
+            }
         }
 
         @Override
         protected String doInBackground(String... f_url) {
-            int count;
+            int count = 0;
             String typ="";
             String name="";
             try {
@@ -115,14 +105,7 @@ public class MainActivity extends AppCompatActivity {
             } catch (Exception e) {
                 Log.e("Error: ", e.getMessage());
             }
-
             return null;
-        }
-
-        @Override
-        protected void onPostExecute(String file_url) {
-            // dismiss the dialog after the file was downloaded
-            dismissDialog(progress_bar_type);
         }
     }
 }
