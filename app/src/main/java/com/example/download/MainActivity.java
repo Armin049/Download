@@ -7,6 +7,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
 import android.view.View;
+import android.widget.EditText;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -22,7 +23,7 @@ public class MainActivity extends AppCompatActivity {
 
     private ProgressDialog pDialog;
     public static final int progress_bar_type = 0;
-    String URL="https://static.wikia.nocookie.net/koenigderloewen/images/a/a5/DerKoenigDerLoewen_poster_02.jpg/revision/latest?cb=20140626201338&path-prefix=de";
+    String URL="";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -31,8 +32,15 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void Download(View view){
-        new DownloadFileFromURL().execute(URL);
-        Toast.makeText(getApplicationContext(),"Download gestartet",Toast.LENGTH_LONG).show();
+        EditText editText=findViewById(R.id.URL);
+        URL=editText.getText().toString();
+        if (URL!=""||URL!=null){
+            new DownloadFileFromURL().execute(URL);
+            Toast.makeText(getApplicationContext(),"Download gestartet",Toast.LENGTH_LONG).show();
+        }
+        else{
+            Toast.makeText(getApplicationContext(),"Bitte gib eine URL an",Toast.LENGTH_LONG).show();
+        }
     }
 
     @Override
@@ -66,6 +74,8 @@ public class MainActivity extends AppCompatActivity {
         @Override
         protected String doInBackground(String... f_url) {
             int count;
+            String typ="";
+            String name="";
             try {
                 URL url = new URL(f_url[0]);
                 URLConnection conection = url.openConnection();
@@ -75,13 +85,20 @@ public class MainActivity extends AppCompatActivity {
 
                 InputStream stream = new BufferedInputStream(url.openStream(),
                         8192);
-                String name="";
-                if(URL.contains(".")) {
-                    name = URL.substring(URL.lastIndexOf("."));
-                }
 
+
+                if(URL.contains(".")) {
+                    typ = URL.substring(URL.lastIndexOf("."));
+                    if(typ.indexOf("/")!=-1) {
+                        typ = typ.substring(0, typ.indexOf("/"));
+                    }
+                    name = URL.substring(URL.lastIndexOf("/"));
+                    if(name.indexOf("/")!=-1) {
+                        name = name.substring(0, name.indexOf("."));
+                    }
+                }
                 OutputStream output = new FileOutputStream(Environment
-                        .getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)+"/file.jpg");   //save to Downloads
+                        .getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)+"/"+name+typ);   //save to Downloads
 
                 byte data[] = new byte[1024];
 
