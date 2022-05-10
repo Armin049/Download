@@ -1,122 +1,111 @@
 package com.example.download;
 
-import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
-
-import androidx.activity.result.ActivityResult;
-import androidx.activity.result.ActivityResultCallback;
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
-
-import android.content.ContentResolver;
-import android.content.ContentValues;
-import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.net.Uri;
-import android.os.Build;
+import android.app.Dialog;
+import android.app.ProgressDialog;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
-import android.provider.MediaStore;
-import android.provider.Settings;
+import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AppCompatActivity;
+
+import java.io.BufferedInputStream;
+import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.URL;
+import java.net.URLConnection;
 
 public class MainActivity extends AppCompatActivity {
 
-   ActivityResultLauncher<Intent> activityResultLauncher;
-   ActivityResultLauncher<String> stringActivityResultLauncher; //todo
-   String[] permission={WRITE_EXTERNAL_STORAGE};
+    private ProgressDialog pDialog;
+    public static final int progress_bar_type = 0;
+    String URL="https://static.wikia.nocookie.net/koenigderloewen/images/a/a5/DerKoenigDerLoewen_poster_02.jpg/revision/latest?cb=20140626201338&path-prefix=de";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
-        //todo
-        stringActivityResultLauncher=registerForActivityResult(new ActivityResultContracts.GetContent(), new ActivityResultCallback<Uri>() {
-            @Override
-            public void onActivityResult(Uri result) {
-                try {
-                    save(result);
-                }
-                catch (Exception e){
-                    e.printStackTrace();
-                }
-            }
-        });
-        takePerm();
-        activityResultLauncher=registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), new ActivityResultCallback<ActivityResult>() {
-            @Override
-            public void onActivityResult(ActivityResult result) {
-                if (result.getResultCode()==MainActivity.RESULT_OK){
-                    Toast.makeText(getApplicationContext(),"Permissions given",Toast.LENGTH_SHORT).show();
-                }
-            }
-        });
     }
 
-    private void save(Uri result) {
-        OutputStream out;
-        ContentResolver resolver=getContentResolver();
-        ContentValues contentValues=new ContentValues();
-        contentValues.put(MediaStore.MediaColumns.DISPLAY_NAME,System.currentTimeMillis());
-        contentValues.put(MediaStore.MediaColumns.RELATIVE_PATH,Environment.DIRECTORY_DOWNLOADS);
-
-    }
-
-    public void takePerm(){
-        if (checkPermissionIsGranted()){
-            Toast.makeText(getApplicationContext(),"Permission Already Granted",Toast.LENGTH_SHORT).show();
-        }
-        else {
-            takePermissions();
-        }
-    }
-
-    public boolean checkPermissionIsGranted(){
-        if (Build.VERSION.SDK_INT>=Build.VERSION_CODES.R){
-            return Environment.isExternalStorageManager();
-        }
-        else{
-            int writeCheck=ContextCompat.checkSelfPermission(this, WRITE_EXTERNAL_STORAGE);
-            return writeCheck == PackageManager.PERMISSION_GRANTED;
-        }
-    }
-
-    public void takePermissions(){
-        if (Build.VERSION.SDK_INT>=Build.VERSION_CODES.R){
-            try{
-                Intent intent = new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION);
-                intent.addCategory("android.intent.category.Default");
-                intent.setData(Uri.parse(String.format("package:%s",new Object[]{getApplicationContext().getPackageName()})));
-                activityResultLauncher.launch(intent);
-            }catch (Exception e){
-                e.printStackTrace();
-            }
-        }
-        else{
-            ActivityCompat.requestPermissions(this,new String[]{WRITE_EXTERNAL_STORAGE},101);
-        }
+    public void Download(View view){
+        new DownloadFileFromURL().execute(URL);
+        Toast.makeText(getApplicationContext(),"Download gestartet",Toast.LENGTH_LONG).show();
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (grantResults.length>0){
-            if (requestCode==101){
-                boolean readExternalStorage=grantResults[0]==PackageManager.PERMISSION_GRANTED;
-                if (readExternalStorage){
-                    Toast.makeText(getApplicationContext(),"Permisson Granted",Toast.LENGTH_SHORT).show();
+    protected Dialog onCreateDialog(int id) {
+        switch (id) {
+            case progress_bar_type:
+                pDialog = new ProgressDialog(this);
+                pDialog.setMessage("Downloading");
+                pDialog.setCancelable(true);
+                pDialog.show();
+                return pDialog;
+            default:
+                return null;
+        }
+    }
+
+    class DownloadFileFromURL extends AsyncTask<String, String, String> {
+
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+            showDialog(progress_bar_type);
+        }
+
+        //Update Progressbar
+        protected void onProgressUpdate(String... progress) {
+            // setting progress percentage
+            pDialog.setProgress(Integer.parseInt(progress[0]));
+        }
+
+        @Override
+        protected String doInBackground(String... f_url) {
+            int count;
+            try {
+                URL url = new URL(f_url[0]);
+                URLConnection conection = url.openConnection();
+                conection.connect();
+
+                int length = conection.getContentLength();
+
+                InputStream stream = new BufferedInputStream(url.openStream(),
+                        8192);
+                String name="";
+                if(URL.contains(".")) {
+                    name = URL.substring(URL.lastIndexOf("."));
                 }
-                else{
-                    takePerm();
+
+                OutputStream output = new FileOutputStream(Environment
+                        .getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)+"/file.jpg");   //save to Downloads
+
+                byte data[] = new byte[1024];
+
+                long total = 0;
+
+                while ((count = stream.read(data)) != -1) {
+                    total += count;
+                    publishProgress("" + (int) ((total * 100) / length));
+                    output.write(data, 0, count);
                 }
+                output.flush();
+                output.close();
+                stream.close();
+            } catch (Exception e) {
+                Log.e("Error: ", e.getMessage());
             }
+
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(String file_url) {
+            // dismiss the dialog after the file was downloaded
+            dismissDialog(progress_bar_type);
         }
     }
 }
