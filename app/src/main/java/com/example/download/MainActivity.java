@@ -2,6 +2,7 @@ package com.example.download;
 
 import android.app.Dialog;
 import android.app.ProgressDialog;
+import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
@@ -42,6 +43,8 @@ public class MainActivity extends AppCompatActivity {
         else{
             Toast.makeText(getApplicationContext(),"Bitte gib eine URL an",Toast.LENGTH_SHORT).show();
         }
+        Intent intent= new Intent(this, DownloadService.class);
+        startForegroundService(intent);
     }
 
     class DownloadFileFromURL extends AsyncTask<String, String, String> {
